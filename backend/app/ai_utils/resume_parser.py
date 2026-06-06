@@ -106,7 +106,10 @@ def parse_resume(resume_text: str) -> dict[str, Any]:
     model = _get_gemini()
 
     try:
-        response = model.generate_content(prompt)
+        response = model.generate_content(
+            prompt,
+            request_options={"timeout": 15.0}
+        )
         raw = response.text.strip()
 
         # Strip markdown code fences if present

@@ -135,6 +135,7 @@ async def upload_resumes(
                 continue
 
             # ── Upload to S3 ──
+            print(f"[{datetime.now(timezone.utc).isoformat()}] START upload")
             file_url = upload_file(
                 file_bytes=file_bytes,
                 original_filename=file.filename,
@@ -142,20 +143,12 @@ async def upload_resumes(
                 category="resumes",
             )
 
-            # ── Quick parse for name/email ──
+            # ── Name extraction ──
             candidate_name = file.filename.rsplit(".", 1)[0]
             candidate_email = None
-            try:
-                file_type = detect_file_type(file.filename, file.content_type)
-                raw_text = extract_text(file_bytes, file_type)
-                parsed = parse_resume(raw_text)
-                if parsed.get("full_name"):
-                    candidate_name = parsed["full_name"]
-                candidate_email = parsed.get("email")
-            except Exception:
-                pass  # Non-critical: use filename as fallback
 
             # ── Save to DB ──
+            print(f"[{datetime.now(timezone.utc).isoformat()}] START database write")
             row = {
                 "id": str(uuid.uuid4()),
                 "candidate_name": candidate_name,
@@ -165,6 +158,7 @@ async def upload_resumes(
                 "created_at": datetime.now(timezone.utc).isoformat(),
             }
             supabase.table("resumes").insert(row).execute()
+            print(f"[{datetime.now(timezone.utc).isoformat()}] END database write")
 
             uploaded.append({
                 "id": row["id"],
@@ -344,19 +338,26 @@ async def screen_candidates(
                 file_type = detect_file_type(filename)
 
                 # ── Extract text ──
+                print(f"[{datetime.now(timezone.utc).isoformat()}] START parsing")
                 resume_text = extract_text(file_bytes, file_type)
+                print(f"[{datetime.now(timezone.utc).isoformat()}] END parsing")
 
                 # ── Parse structure ──
+                print(f"[{datetime.now(timezone.utc).isoformat()}] START AI call")
                 parsed = parse_resume(resume_text)
+                print(f"[{datetime.now(timezone.utc).isoformat()}] END AI call")
                 if parsed.get("full_name"):
                     candidate_name = parsed["full_name"]
                 if parsed.get("email") and not candidate_email:
                     candidate_email = parsed["email"]
 
                 # ── Score & analyze ──
+                print(f"[{datetime.now(timezone.utc).isoformat()}] START scoring")
                 result = screen_candidate(resume_text, jd_text, parsed)
+                print(f"[{datetime.now(timezone.utc).isoformat()}] END scoring")
 
                 # ── Save to candidates table ──
+                print(f"[{datetime.now(timezone.utc).isoformat()}] START database write")
                 candidate_id = str(uuid.uuid4())
                 supabase.table("candidates").insert({
                     "id": candidate_id,
@@ -376,6 +377,7 @@ async def screen_candidates(
                     "notes": f"AI score: {result['ai_score']}% | {result.get('recommendation', '')}",
                     "updated_at": datetime.now(timezone.utc).isoformat(),
                 }).execute()
+                print(f"[{datetime.now(timezone.utc).isoformat()}] END database write")
 
                 candidates.append(CandidateScoreOut(
                     candidate_id=candidate_id,

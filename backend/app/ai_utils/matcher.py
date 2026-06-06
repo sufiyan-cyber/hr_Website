@@ -7,36 +7,39 @@ Combines:
 """
 
 import json
+import math
 import os
 import re
 from typing import Any
 
-import numpy as np
+import google.generativeai as genai
 
 
 # ---------------------------------------------------------------------------
-# Embedding model (lazy-loaded, cached)
+# Gemini Configuration & Embeddings
 # ---------------------------------------------------------------------------
 
-_embedding_model = None
+_gemini_configured = False
 
 
-def _get_embedder():
-    global _embedding_model
-    if _embedding_model is None:
-        from sentence_transformers import SentenceTransformer
-        # all-MiniLM-L6-v2 is fast, small, and excellent for semantic matching
-        _embedding_model = SentenceTransformer("all-MiniLM-L6-v2")
-    return _embedding_model
+def _ensure_gemini_configured():
+    global _gemini_configured
+    if not _gemini_configured:
+        api_key = os.environ.get("GEMINI_API_KEY", "")
+        if not api_key:
+            raise RuntimeError("GEMINI_API_KEY is not set.")
+        genai.configure(api_key=api_key)
+        _gemini_configured = True
 
 
-def _cosine_similarity(a: np.ndarray, b: np.ndarray) -> float:
+def _cosine_similarity(a: list[float], b: list[float]) -> float:
     """Compute cosine similarity between two vectors."""
-    norm_a = np.linalg.norm(a)
-    norm_b = np.linalg.norm(b)
+    dot_product = sum(x * y for x, y in zip(a, b))
+    norm_a = math.sqrt(sum(x * x for x in a))
+    norm_b = math.sqrt(sum(y * y for y in b))
     if norm_a == 0 or norm_b == 0:
         return 0.0
-    return float(np.dot(a, b) / (norm_a * norm_b))
+    return float(dot_product / (norm_a * norm_b))
 
 
 def compute_similarity_score(resume_text: str, jd_text: str) -> float:
@@ -44,14 +47,26 @@ def compute_similarity_score(resume_text: str, jd_text: str) -> float:
     Compute semantic similarity between a resume and a job description.
     Returns a score from 0.0 to 100.0.
     """
-    model = _get_embedder()
+    try:
+        _ensure_gemini_configured()
 
-    # Truncate to avoid OOM for very long docs
-    r_trunc = resume_text[:4000]
-    j_trunc = jd_text[:2000]
+        # Truncate to avoid OOM or token limits
+        r_trunc = resume_text[:4000]
+        j_trunc = jd_text[:2000]
 
-    embeddings = model.encode([r_trunc, j_trunc])
-    similarity = _cosine_similarity(embeddings[0], embeddings[1])
+        # Generate embeddings using gemini-embedding-001
+        response = genai.embed_content(
+            model="models/gemini-embedding-001",
+            content=[r_trunc, j_trunc],
+            task_type="semantic_similarity",
+            request_options={"timeout": 15.0}
+        )
+        embeddings = response["embedding"]
+        similarity = _cosine_similarity(embeddings[0], embeddings[1])
+    except Exception as e:
+        print(f"Error computing similarity score: {e}")
+        # Default fallback similarity score (neutral)
+        similarity = 0.0
 
     # Map from [-1, 1] to [0, 100]
     score = (similarity + 1) / 2 * 100
@@ -68,11 +83,7 @@ _gemini_client = None
 def _get_gemini():
     global _gemini_client
     if _gemini_client is None:
-        import google.generativeai as genai
-        api_key = os.environ.get("GEMINI_API_KEY", "")
-        if not api_key:
-            raise RuntimeError("GEMINI_API_KEY is not set.")
-        genai.configure(api_key=api_key)
+        _ensure_gemini_configured()
         _gemini_client = genai.GenerativeModel(
             model_name="gemini-2.5-flash",
             generation_config={
@@ -137,7 +148,10 @@ def analyze_match(
     prompt = MATCH_PROMPT.replace("{resume_text}", r_trunc).replace("{jd_text}", j_trunc)
 
     try:
-        response = model.generate_content(prompt)
+        response = model.generate_content(
+            prompt,
+            request_options={"timeout": 30.0}
+        )
         raw = response.text.strip()
 
         raw = re.sub(r"^```(?:json)?\s*", "", raw, flags=re.IGNORECASE)
