@@ -3,8 +3,7 @@
 > A full-stack, production-ready Human Resource Management System powered by Google Gemini AI.
 > Built with React + Vite (Frontend) and Python FastAPI (Backend), using Supabase for database and auth.
 
-[![Frontend CI](https://github.com/your-org/hrms-platform/actions/workflows/frontend-ci.yml/badge.svg)](https://github.com/your-org/hrms-platform/actions)
-[![Backend CI](https://github.com/your-org/hrms-platform/actions/workflows/backend-ci.yml/badge.svg)](https://github.com/your-org/hrms-platform/actions)
+
 
 ---
 
@@ -49,7 +48,7 @@
 | Backend     | Python 3.11, FastAPI, Uvicorn, Pydantic v2                    |
 | Database    | Supabase (PostgreSQL) with Row Level Security                 |
 | Auth        | Supabase Auth (JWT), RBAC middleware                          |
-| AI / LLM    | Google Gemini 1.5 Flash (screening + chatbot)                 |
+| AI / LLM    | Google Gemini 2.5 Flash (screening + chatbot)                 |
 | File Storage| AWS S3 (resume PDFs, job description attachments)             |
 | Deployment  | Vercel (Frontend), AWS Elastic Beanstalk (Backend)            |
 | CI/CD       | GitHub Actions                                                |
