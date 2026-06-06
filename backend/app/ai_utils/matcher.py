@@ -85,10 +85,12 @@ def _get_gemini():
     if _gemini_client is None:
         _ensure_gemini_configured()
         _gemini_client = genai.GenerativeModel(
-            model_name="gemini-2.0-flash",   # Fast, stable production model (non-thinking)
+            model_name="gemini-2.0-flash",
             generation_config={
+                # NOTE: Do NOT set response_mime_type="application/json" here.
+                # The 0.7/0.8 SDK + gemini-2.0-flash silently drops the response
+                # when that constraint is active. We parse JSON manually instead.
                 "temperature": 0.3,
-                "response_mime_type": "application/json",
             },
         )
     return _gemini_client
@@ -150,22 +152,27 @@ def analyze_match(
     try:
         response = model.generate_content(
             prompt,
-            request_options={"timeout": 30.0}  # gemini-2.0-flash is fast; 30s is safe headroom
+            request_options={"timeout": 45.0}
         )
         raw = response.text.strip()
 
+        # Strip markdown code fences if present
         raw = re.sub(r"^```(?:json)?\s*", "", raw, flags=re.IGNORECASE)
         raw = re.sub(r"\s*```$", "", raw)
 
         result = json.loads(raw)
         return _sanitize_match(result)
 
-    except json.JSONDecodeError:
+    except json.JSONDecodeError as exc:
+        print(f"[matcher] JSON decode error — raw response may be malformed: {exc}")
         return _empty_match()
     except Exception as exc:
-        # Log but do NOT raise — return empty match as graceful fallback
-        print(f"[matcher] Gemini match analysis failed: {exc}")
-        return _empty_match()
+        # Surface the real error in recommendation_reason so it shows in the UI
+        err_msg = str(exc)[:200]
+        print(f"[matcher] Gemini analyze_match failed: {err_msg}")
+        result = _empty_match()
+        result["recommendation_reason"] = f"AI error: {err_msg}"
+        return result
 
 
 def _empty_match() -> dict:
