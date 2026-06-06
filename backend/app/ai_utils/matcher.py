@@ -10,9 +10,40 @@ import json
 import math
 import os
 import re
+import time
 from typing import Any
 
 import google.generativeai as genai
+
+
+# ---------------------------------------------------------------------------
+# Retry helper — handles 429 TooManyRequests with exponential backoff
+# ---------------------------------------------------------------------------
+
+def _call_with_retry(fn, *args, max_retries: int = 4, base_delay: float = 5.0, **kwargs):
+    """
+    Call fn(*args, **kwargs) with exponential backoff on 429 / ResourceExhausted.
+    Delays: 5s → 10s → 20s → 40s before giving up.
+    """
+    delay = base_delay
+    for attempt in range(max_retries):
+        try:
+            return fn(*args, **kwargs)
+        except Exception as exc:
+            err = str(exc).lower()
+            is_rate_limit = (
+                "429" in err
+                or "too many requests" in err
+                or "resource_exhausted" in err
+                or "quota" in err
+            )
+            if is_rate_limit and attempt < max_retries - 1:
+                print(f"[matcher] Rate limit hit (attempt {attempt + 1}/{max_retries}). "
+                      f"Retrying in {delay:.0f}s...")
+                time.sleep(delay)
+                delay *= 2
+            else:
+                raise
 
 
 # ---------------------------------------------------------------------------
@@ -54,13 +85,16 @@ def compute_similarity_score(resume_text: str, jd_text: str) -> float:
         r_trunc = resume_text[:4000]
         j_trunc = jd_text[:2000]
 
-        # Generate embeddings using gemini-embedding-001
-        response = genai.embed_content(
-            model="models/gemini-embedding-001",
-            content=[r_trunc, j_trunc],
-            task_type="semantic_similarity",
-            request_options={"timeout": 15.0}
-        )
+        # Generate embeddings using gemini-embedding-001 (with retry)
+        def _do_embed():
+            return genai.embed_content(
+                model="models/gemini-embedding-001",
+                content=[r_trunc, j_trunc],
+                task_type="semantic_similarity",
+                request_options={"timeout": 15.0}
+            )
+
+        response = _call_with_retry(_do_embed)
         embeddings = response["embedding"]
         similarity = _cosine_similarity(embeddings[0], embeddings[1])
     except Exception as e:
@@ -150,7 +184,8 @@ def analyze_match(
     prompt = MATCH_PROMPT.replace("{resume_text}", r_trunc).replace("{jd_text}", j_trunc)
 
     try:
-        response = model.generate_content(
+        response = _call_with_retry(
+            model.generate_content,
             prompt,
             request_options={"timeout": 45.0}
         )
@@ -220,6 +255,9 @@ def screen_candidate(
     """
     # Embedding score (40% weight — objective)
     embedding_score = compute_similarity_score(resume_text, jd_text)
+
+    # Small delay between sequential Gemini calls to avoid hitting RPM limits
+    time.sleep(2)
 
     # Gemini qualitative analysis (60% weight via recommendation)
     match_result = analyze_match(resume_text, jd_text, parsed_resume)

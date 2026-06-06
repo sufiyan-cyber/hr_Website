@@ -4,6 +4,37 @@ Gemini-powered HR assistant with live HR context injection.
 """
 
 import os
+import time
+
+
+# ---------------------------------------------------------------------------
+# Retry helper — handles 429 TooManyRequests with exponential backoff
+# ---------------------------------------------------------------------------
+
+def _call_with_retry(fn, *args, max_retries: int = 4, base_delay: float = 5.0, **kwargs):
+    """
+    Call fn(*args, **kwargs) with exponential backoff on 429 / ResourceExhausted.
+    Delays: 5s → 10s → 20s → 40s before giving up.
+    """
+    delay = base_delay
+    for attempt in range(max_retries):
+        try:
+            return fn(*args, **kwargs)
+        except Exception as exc:
+            err = str(exc).lower()
+            is_rate_limit = (
+                "429" in err
+                or "too many requests" in err
+                or "resource_exhausted" in err
+                or "quota" in err
+            )
+            if is_rate_limit and attempt < max_retries - 1:
+                print(f"[chatbot] Rate limit hit (attempt {attempt + 1}/{max_retries}). "
+                      f"Retrying in {delay:.0f}s...")
+                time.sleep(delay)
+                delay *= 2
+            else:
+                raise
 
 
 # ── System prompt ─────────────────────────────────────────────────────────────
@@ -95,6 +126,14 @@ def get_gemini_response(user_message: str, history: list[dict], hr_context: str)
         if not api_key:
             return _offline_response(user_message)
 
+        # Warn if the key format looks wrong (valid Gemini keys start with "AIza")
+        if not api_key.startswith("AIza"):
+            print(
+                "[chatbot] WARNING: GEMINI_API_KEY does not start with 'AIza'. "
+                "This may be an invalid or corrupted key. "
+                "Please copy a fresh key from https://aistudio.google.com/app/apikey"
+            )
+
         genai.configure(api_key=api_key)
 
         model = genai.GenerativeModel(
@@ -111,7 +150,7 @@ def get_gemini_response(user_message: str, history: list[dict], hr_context: str)
                 gemini_history.append({"role": role, "parts": [content]})
 
         chat = model.start_chat(history=gemini_history)
-        response = chat.send_message(user_message)
+        response = _call_with_retry(chat.send_message, user_message)
         return response.text
 
     except ImportError:

@@ -10,6 +10,7 @@ Endpoints:
 """
 
 import uuid
+import time
 from collections import defaultdict
 from datetime import datetime, timezone
 from time import time as _time
@@ -338,13 +339,16 @@ async def screen_candidates(
                 print(f"[{datetime.now(timezone.utc).isoformat()}] END parsing")
 
                 # ── Parse structure ──
-                print(f"[{datetime.now(timezone.utc).isoformat()}] START AI call")
+                print(f"[{datetime.now(timezone.utc).isoformat()}] START AI call (parse)")
                 parsed = parse_resume(resume_text)
-                print(f"[{datetime.now(timezone.utc).isoformat()}] END AI call")
+                print(f"[{datetime.now(timezone.utc).isoformat()}] END AI call (parse)")
                 if parsed.get("full_name"):
                     candidate_name = parsed["full_name"]
                 if parsed.get("email") and not candidate_email:
                     candidate_email = parsed["email"]
+
+                # Small pause between sequential Gemini calls to respect RPM limits
+                time.sleep(2)
 
                 # ── Score & analyze ──
                 print(f"[{datetime.now(timezone.utc).isoformat()}] START scoring")

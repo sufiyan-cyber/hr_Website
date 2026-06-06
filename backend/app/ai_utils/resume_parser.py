@@ -8,7 +8,38 @@ Extracts: name, email, phone, skills, education, experience, certifications.
 import json
 import os
 import re
+import time
 from typing import Any
+
+
+# ---------------------------------------------------------------------------
+# Retry helper — handles 429 TooManyRequests with exponential backoff
+# ---------------------------------------------------------------------------
+
+def _call_with_retry(fn, *args, max_retries: int = 4, base_delay: float = 5.0, **kwargs):
+    """
+    Call fn(*args, **kwargs) with exponential backoff on 429 / ResourceExhausted.
+    Delays: 5s → 10s → 20s → 40s before giving up.
+    """
+    delay = base_delay
+    for attempt in range(max_retries):
+        try:
+            return fn(*args, **kwargs)
+        except Exception as exc:
+            err = str(exc).lower()
+            is_rate_limit = (
+                "429" in err
+                or "too many requests" in err
+                or "resource_exhausted" in err
+                or "quota" in err
+            )
+            if is_rate_limit and attempt < max_retries - 1:
+                print(f"[resume_parser] Rate limit hit (attempt {attempt + 1}/{max_retries}). "
+                      f"Retrying in {delay:.0f}s...")
+                time.sleep(delay)
+                delay *= 2
+            else:
+                raise
 
 
 # ---------------------------------------------------------------------------
@@ -25,6 +56,13 @@ def _get_gemini():
         api_key = os.environ.get("GEMINI_API_KEY", "")
         if not api_key:
             raise RuntimeError("GEMINI_API_KEY environment variable is not set.")
+        # Warn if the key format looks wrong (valid Gemini keys start with "AIza")
+        if not api_key.startswith("AIza"):
+            print(
+                "[resume_parser] WARNING: GEMINI_API_KEY does not start with 'AIza'. "
+                "This may be an invalid or corrupted key. "
+                "Please copy a fresh key from https://aistudio.google.com/app/apikey"
+            )
         genai.configure(api_key=api_key)
         _gemini_client = genai.GenerativeModel(
             model_name="gemini-2.0-flash",
@@ -108,9 +146,10 @@ def parse_resume(resume_text: str) -> dict[str, Any]:
     model = _get_gemini()
 
     try:
-        response = model.generate_content(
+        response = _call_with_retry(
+            model.generate_content,
             prompt,
-            request_options={"timeout": 25.0}  # gemini-1.5-flash is fast; 25s is safe headroom
+            request_options={"timeout": 25.0}
         )
         raw = response.text.strip()
 
