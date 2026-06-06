@@ -389,7 +389,7 @@ async def screen_candidates(
                     .execute()
                 )
 
-                if existing_candidate.data:
+                if existing_candidate and getattr(existing_candidate, "data", None):
                     candidate_id = existing_candidate.data["id"]
                     supabase.table("candidates").update({
                         "ai_score": result["ai_score"],
