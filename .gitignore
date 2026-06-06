@@ -1,0 +1,90 @@
+# =============================================================
+#  HRMS Platform — .gitignore
+# =============================================================
+
+# ── Python ────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+build/
+.eggs/
+*.whl
+dist/
+*.pyc
+
+# ── Virtual environments ───────────────────────────────────────
+venv/
+env/
+.venv/
+ENV/
+.env_backup
+
+# ── Environment / Secrets (NEVER commit these) ────────────────
+.env
+.env.local
+.env.*.local
+*.env
+!.env.example
+!frontend/.env.example
+!backend/.env.example
+
+# ── One-off helper scripts (generated during dev, not needed) ──
+backend/fix_env.py
+backend/apply_json.py
+backend/encode_sa_json.py
+backend/get_b64.py
+
+# ── Pytest / Coverage ─────────────────────────────────────────
+.pytest_cache/
+.coverage
+htmlcov/
+coverage.xml
+
+# ── Node ──────────────────────────────────────────────────────
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# ── Vite / Frontend build output ──────────────────────────────
+frontend/dist/
+frontend/.vite/
+.vite/
+
+# ── OS ────────────────────────────────────────────────────────
+.DS_Store
+.DS_Store?
+._*
+Thumbs.db
+desktop.ini
+ehthumbs.db
+
+# ── IDEs ──────────────────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+*.swo
+*.sublime-project
+*.sublime-workspace
+
+# ── AWS ───────────────────────────────────────────────────────
+.aws/
+.elasticbeanstalk/
+*.zip
+
+# ── Logs ──────────────────────────────────────────────────────
+*.log
+logs/
+pip-log.txt
+
+# ── Misc ──────────────────────────────────────────────────────
+*.sqlite3
+*.db
+.mypy_cache/
+.ruff_cache/
+.hypothesis/

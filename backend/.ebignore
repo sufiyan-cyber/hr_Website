@@ -1,0 +1,17 @@
+venv/
+__pycache__/
+*.pyc
+*.pyo
+.env
+fix_env.py
+apply_json.py
+encode_sa_json.py
+get_b64.py
+tests/
+*.log
+.pytest_cache/
+.coverage
+htmlcov/
+*.egg-info/
+.idea/
+.vscode/
