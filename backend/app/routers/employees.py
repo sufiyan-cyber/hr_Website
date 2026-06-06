@@ -282,11 +282,16 @@ async def get_employee(
         for r in (perf_result.data or []):
             raw_s = float(r.get("score") or 0)
             sc_5 = round(raw_s / 2, 1)
-            if raw_s >= 9:   rating = "Exceptional"
-            elif raw_s >= 7.5: rating = "Exceeds Expectations"
-            elif raw_s >= 6:   rating = "Meets Expectations"
-            elif raw_s >= 4:   rating = "Needs Improvement"
-            else:              rating = "Unsatisfactory"
+            if raw_s >= 9:
+                rating = "Exceptional"
+            elif raw_s >= 7.5:
+                rating = "Exceeds Expectations"
+            elif raw_s >= 6:
+                rating = "Meets Expectations"
+            elif raw_s >= 4:
+                rating = "Needs Improvement"
+            else:
+                rating = "Unsatisfactory"
             
             try:
                 from datetime import date as _date
@@ -372,9 +377,12 @@ async def update_employee(
     supabase = get_supabase()
 
     updates: dict = {}
-    if payload.full_name is not None: updates["full_name"] = payload.full_name
-    if payload.email is not None: updates["email"] = payload.email
-    if payload.role is not None: updates["role"] = payload.role
+    if payload.full_name is not None:
+        updates["full_name"] = payload.full_name
+    if payload.email is not None:
+        updates["email"] = payload.email
+    if payload.role is not None:
+        updates["role"] = payload.role
 
     if not updates:
         raise HTTPException(

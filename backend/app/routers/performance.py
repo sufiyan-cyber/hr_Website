@@ -32,10 +32,14 @@ def _get_user_id(supabase, auth_uid: str) -> str | None:
 
 def _score_to_rating(score: float) -> str:
     """Convert 0-10 score to a human-readable rating label."""
-    if score >= 9:   return "Exceptional"
-    if score >= 7.5: return "Exceeds Expectations"
-    if score >= 6:   return "Meets Expectations"
-    if score >= 4:   return "Needs Improvement"
+    if score >= 9:
+        return "Exceptional"
+    if score >= 7.5:
+        return "Exceeds Expectations"
+    if score >= 6:
+        return "Meets Expectations"
+    if score >= 4:
+        return "Needs Improvement"
     return "Unsatisfactory"
 
 

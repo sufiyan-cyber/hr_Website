@@ -9,13 +9,13 @@ Endpoints:
   GET  /recruitment/results/{job_id} — Retrieve ranked candidates for a job
 """
 
-import asyncio
 import uuid
+from collections import defaultdict
 from datetime import datetime, timezone
-from typing import Annotated
+from time import time as _time
 
-from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, HTTPException, Query, UploadFile, status
-from fastapi.responses import JSONResponse
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile, status
+from pydantic import BaseModel as PM
 
 from app.database.supabase_client import get_supabase
 from app.middleware.dependencies import get_current_user, role_required
@@ -31,9 +31,6 @@ from app.schemas.recruitment import (
 router = APIRouter(prefix="/recruitment", tags=["Recruitment"])
 
 # ── In-memory rate limiter (10 requests / 60 seconds / user) ─────────────────
-from collections import defaultdict
-from time import time as _time
-
 _screen_rate_store: dict[str, list[float]] = defaultdict(list)
 SCREEN_RATE_LIMIT  = 10
 SCREEN_RATE_WINDOW = 60  # seconds
@@ -91,9 +88,7 @@ async def upload_resumes(
     4. Saves a row in public.resumes table
     Returns lists of successes and failures.
     """
-    from app.ai_utils.resume_extractor import detect_file_type, extract_text
     from app.ai_utils.s3_uploader import upload_file
-    from app.ai_utils.resume_parser import parse_resume
 
     if len(files) > 20:
         raise HTTPException(
@@ -521,8 +516,6 @@ async def get_screening_results(
 # ===========================================================================
 # PATCH /recruitment/candidates/{candidate_id}/status
 # ===========================================================================
-
-from pydantic import BaseModel as PM
 
 class StatusUpdateRequest(PM):
     stage: str

@@ -490,11 +490,16 @@ async def employee_dashboard(
                 raw_score = float(r.get("score") or 0)
                 score_5   = round(raw_score / 2, 1)  # DB 0-10 → UI 0-5
                 # Derive rating label from score
-                if raw_score >= 9:   rating = "Exceptional"
-                elif raw_score >= 7.5: rating = "Exceeds Expectations"
-                elif raw_score >= 6:   rating = "Meets Expectations"
-                elif raw_score >= 4:   rating = "Needs Improvement"
-                else:                  rating = "Unsatisfactory"
+                if raw_score >= 9:
+                    rating = "Exceptional"
+                elif raw_score >= 7.5:
+                    rating = "Exceeds Expectations"
+                elif raw_score >= 6:
+                    rating = "Meets Expectations"
+                elif raw_score >= 4:
+                    rating = "Needs Improvement"
+                else:
+                    rating = "Unsatisfactory"
                 # Derive quarter
                 try:
                     from datetime import date as _date

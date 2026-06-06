@@ -54,7 +54,6 @@ def _load_sa_info() -> dict:
     Raises RuntimeError with a diagnostic message on any failure.
     """
     import base64
-    import tempfile
 
     # ── Read + strip both env vars (handles Windows \r\n endings) ────────────
     raw = os.getenv("GOOGLE_SERVICE_ACCOUNT_JSON", "").strip()

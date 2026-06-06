@@ -79,38 +79,41 @@ app.add_middleware(
 # Routers  (import and include as features are built)
 # ---------------------------------------------------------------------------
 
-# ── Phase 1: Auth router (active) ──────────────────────────────────────────
-from app.routers import auth
+from app.routers import (  # noqa: E402
+    auth,
+    recruitment,
+    dashboard,
+    candidates,
+    employees,
+    departments,
+    chatbot,
+    interviews,
+    attendance,
+    payroll,
+    performance,
+)
+
+# ── Phase 1: Auth router ──────────────────────────────────────────────────────
 app.include_router(auth.router, prefix="/api/v1")
 
-# ── Phase 2: Recruitment / AI Screening router (active) ─────────────────────
-from app.routers import recruitment
+# ── Phase 2: Recruitment / AI Screening router ───────────────────────────────
 app.include_router(recruitment.router, prefix="/api/v1")
 
-# ── Phase 3: Dashboard router (active) ────────────────────────────────────────
-from app.routers import dashboard
+# ── Phase 3: Dashboard router ─────────────────────────────────────────────────
 app.include_router(dashboard.router, prefix="/api/v1")
 
-# ── Phase 4: Employees, Candidates, Departments (active) ────────────────────
-from app.routers import candidates
+# ── Phase 4: Employees, Candidates, Departments ──────────────────────────────
 app.include_router(candidates.router, prefix="/api/v1")
-
-from app.routers import employees
 app.include_router(employees.router, prefix="/api/v1")
-
-from app.routers import departments
 app.include_router(departments.router, prefix="/api/v1")
 
-# ── Phase 5: Chatbot (active) ────────────────────────────────────────────────
-from app.routers import chatbot
+# ── Phase 5: Chatbot ──────────────────────────────────────────────────────────
 app.include_router(chatbot.router, prefix="/api/v1")
 
-# ── Interviews: Generate Google Meet links (HR Recruiter only) ──────────────
-from app.routers import interviews
+# ── Interviews: Generate Google Meet links ───────────────────────────────────
 app.include_router(interviews.router, prefix="/api/v1")
 
-# ── Phase 6: Attendance, Payroll, Performance (active) ──────────────────────
-from app.routers import attendance, payroll, performance
+# ── Phase 6: Attendance, Payroll, Performance ────────────────────────────────
 app.include_router(attendance.router, prefix="/api/v1")
 app.include_router(payroll.router, prefix="/api/v1")
 app.include_router(performance.router, prefix="/api/v1")

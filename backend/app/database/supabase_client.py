@@ -7,7 +7,6 @@ Usage:
 """
 
 import os
-from functools import lru_cache
 
 from supabase import Client, create_client
 

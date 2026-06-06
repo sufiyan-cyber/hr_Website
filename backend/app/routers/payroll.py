@@ -8,7 +8,7 @@ payroll table columns:
 payroll_status ENUM: 'pending' | 'processed' | 'paid' | 'failed'
 """
 
-from datetime import date, datetime, timezone
+from datetime import date
 
 from fastapi import APIRouter, Depends
 

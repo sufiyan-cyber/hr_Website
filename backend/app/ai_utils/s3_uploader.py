@@ -5,7 +5,6 @@ Handles uploading resume files and other documents to S3.
 Returns public (or pre-signed) URLs.
 """
 
-import io
 import os
 import uuid
 from datetime import datetime
