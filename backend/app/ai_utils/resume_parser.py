@@ -27,9 +27,9 @@ def _get_gemini():
             raise RuntimeError("GEMINI_API_KEY environment variable is not set.")
         genai.configure(api_key=api_key)
         _gemini_client = genai.GenerativeModel(
-            model_name="gemini-2.5-flash",
+            model_name="gemini-2.0-flash",   # Fast, stable production model (non-thinking)
             generation_config={
-                "temperature": 0.1,      # Low temp for deterministic extraction
+                "temperature": 0.1,
                 "response_mime_type": "application/json",
             },
         )
@@ -108,7 +108,7 @@ def parse_resume(resume_text: str) -> dict[str, Any]:
     try:
         response = model.generate_content(
             prompt,
-            request_options={"timeout": 15.0}
+            request_options={"timeout": 25.0}  # gemini-1.5-flash is fast; 25s is safe headroom
         )
         raw = response.text.strip()
 
@@ -120,10 +120,12 @@ def parse_resume(resume_text: str) -> dict[str, Any]:
         return _sanitize(parsed)
 
     except json.JSONDecodeError:
-        # If Gemini returns malformed JSON, return empty but don't crash
+        # Malformed JSON — return empty gracefully
         return _empty_result()
     except Exception as exc:
-        raise RuntimeError(f"Gemini resume parsing failed: {exc}") from exc
+        # Log but do NOT raise — caller will get empty result as fallback
+        print(f"[resume_parser] Gemini call failed: {exc}")
+        return _empty_result()
 
 
 def _empty_result() -> dict:

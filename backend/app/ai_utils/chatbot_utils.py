@@ -98,7 +98,7 @@ def get_gemini_response(user_message: str, history: list[dict], hr_context: str)
         genai.configure(api_key=api_key)
 
         model = genai.GenerativeModel(
-            model_name="gemini-2.5-flash",
+            model_name="gemini-2.0-flash",
             system_instruction=f"{SYSTEM_PROMPT}\n\n{hr_context}",
         )
 

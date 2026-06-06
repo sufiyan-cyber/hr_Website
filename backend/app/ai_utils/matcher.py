@@ -85,7 +85,7 @@ def _get_gemini():
     if _gemini_client is None:
         _ensure_gemini_configured()
         _gemini_client = genai.GenerativeModel(
-            model_name="gemini-2.5-flash",
+            model_name="gemini-2.0-flash",   # Fast, stable production model (non-thinking)
             generation_config={
                 "temperature": 0.3,
                 "response_mime_type": "application/json",
@@ -150,7 +150,7 @@ def analyze_match(
     try:
         response = model.generate_content(
             prompt,
-            request_options={"timeout": 30.0}
+            request_options={"timeout": 30.0}  # gemini-2.0-flash is fast; 30s is safe headroom
         )
         raw = response.text.strip()
 
@@ -163,7 +163,9 @@ def analyze_match(
     except json.JSONDecodeError:
         return _empty_match()
     except Exception as exc:
-        raise RuntimeError(f"Gemini match analysis failed: {exc}") from exc
+        # Log but do NOT raise — return empty match as graceful fallback
+        print(f"[matcher] Gemini match analysis failed: {exc}")
+        return _empty_match()
 
 
 def _empty_match() -> dict:
