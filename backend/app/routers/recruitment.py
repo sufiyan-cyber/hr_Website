@@ -227,6 +227,23 @@ async def upload_job_description(
         except Exception:
             pass  # Non-fatal: still save the text
 
+    # Check if this exact job description already exists
+    # We query only by title to avoid URI Too Long errors with very large descriptions
+    existing = (
+        supabase.table("job_descriptions")
+        .select("id, description")
+        .eq("title", title)
+        .execute()
+    )
+    if existing and existing.data:
+        for record in existing.data:
+            if record.get("description") == full_description:
+                return UploadJDResponse(
+                    id=record["id"],
+                    title=title,
+                    message="Using existing job description."
+                )
+
     row = {
         "id": str(uuid.uuid4()),
         "title": title,
@@ -347,9 +364,6 @@ async def screen_candidates(
                 if parsed.get("email") and not candidate_email:
                     candidate_email = parsed["email"]
 
-                # Small pause between sequential Gemini calls to respect RPM limits
-                time.sleep(2)
-
                 # ── Score & analyze ──
                 print(f"[{datetime.now(timezone.utc).isoformat()}] START scoring")
                 result = screen_candidate(resume_text, jd_text, parsed)
@@ -357,16 +371,41 @@ async def screen_candidates(
 
                 # ── Save to candidates table ──
                 print(f"[{datetime.now(timezone.utc).isoformat()}] START database write")
-                candidate_id = str(uuid.uuid4())
-                supabase.table("candidates").insert({
-                    "id": candidate_id,
-                    "resume_id": resume_id,
-                    "job_id": payload.job_description_id,
-                    "status": "screening",
-                    "ai_score": result["ai_score"],
-                    "ai_summary": result.get("ai_summary"),
-                    "created_at": datetime.now(timezone.utc).isoformat(),
-                }).execute()
+                
+                # Update the resumes table with the properly parsed name and email
+                if parsed.get("full_name") or parsed.get("email"):
+                    supabase.table("resumes").update({
+                        "candidate_name": candidate_name,
+                        "email": candidate_email
+                    }).eq("id", resume_id).execute()
+
+                # Check if this candidate already exists for this job to avoid duplicates
+                existing_candidate = (
+                    supabase.table("candidates")
+                    .select("id")
+                    .eq("resume_id", resume_id)
+                    .eq("job_id", payload.job_description_id)
+                    .maybe_single()
+                    .execute()
+                )
+
+                if existing_candidate.data:
+                    candidate_id = existing_candidate.data["id"]
+                    supabase.table("candidates").update({
+                        "ai_score": result["ai_score"],
+                        "ai_summary": result.get("ai_summary"),
+                    }).eq("id", candidate_id).execute()
+                else:
+                    candidate_id = str(uuid.uuid4())
+                    supabase.table("candidates").insert({
+                        "id": candidate_id,
+                        "resume_id": resume_id,
+                        "job_id": payload.job_description_id,
+                        "status": "screening",
+                        "ai_score": result["ai_score"],
+                        "ai_summary": result.get("ai_summary"),
+                        "created_at": datetime.now(timezone.utc).isoformat(),
+                    }).execute()
 
                 # ── Also save stage log ──
                 supabase.table("candidate_status").insert({

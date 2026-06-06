@@ -119,7 +119,7 @@ def _get_gemini():
     if _gemini_client is None:
         _ensure_gemini_configured()
         _gemini_client = genai.GenerativeModel(
-            model_name="gemini-2.0-flash",
+            model_name="gemini-2.5-flash",
             generation_config={
                 # NOTE: Do NOT set response_mime_type="application/json" here.
                 # The 0.7/0.8 SDK + gemini-2.0-flash silently drops the response
@@ -255,9 +255,6 @@ def screen_candidate(
     """
     # Embedding score (40% weight — objective)
     embedding_score = compute_similarity_score(resume_text, jd_text)
-
-    # Small delay between sequential Gemini calls to avoid hitting RPM limits
-    time.sleep(2)
 
     # Gemini qualitative analysis (60% weight via recommendation)
     match_result = analyze_match(resume_text, jd_text, parsed_resume)

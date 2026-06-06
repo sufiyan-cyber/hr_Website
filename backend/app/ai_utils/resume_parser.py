@@ -65,7 +65,7 @@ def _get_gemini():
             )
         genai.configure(api_key=api_key)
         _gemini_client = genai.GenerativeModel(
-            model_name="gemini-2.0-flash",
+            model_name="gemini-2.5-flash",
             generation_config={
                 # NOTE: Do NOT set response_mime_type="application/json" here.
                 # The 0.7/0.8 SDK + gemini-2.0-flash silently drops the response
