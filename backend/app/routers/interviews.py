@@ -182,11 +182,11 @@ async def generate_meet_link(
     }
 
     # ── Call Google Calendar API (with Jitsi fallback) ───────────────────────
-    service = _get_calendar_service()
     meet_link = None
-    created = None
+    created = {}
     
     try:
+        service = _get_calendar_service()
         # First attempt: Try to generate a native Google Meet link
         created = (
             service.events()
@@ -208,52 +208,34 @@ async def generate_meet_link(
         ) or created.get("hangoutLink")
 
     except Exception as exc:
-        err_msg = str(exc)
-        # Check if the error is the known Service Account Hangouts Meet restriction
-        if "Service accounts cannot" in err_msg or "conference" in err_msg.lower() or "403" in err_msg:
-            # FALLBACK: Create a free Jitsi link and put it in the event location
-            import re
-            
-            # Create a clean, URL-safe meeting ID
-            safe_name = re.sub(r'[^a-zA-Z0-9]', '', payload.candidate_name)
-            jitsi_link = f"https://meet.jit.si/HRMS-Interview-{safe_name}-{str(uuid.uuid4())[:8]}"
-            
-            # Remove the restricted Google Meet request and attendees
-            event_body.pop("conferenceData", None)
-            event_body.pop("attendees", None)
-            
-            # Add the Jitsi link to the event
-            event_body["location"] = jitsi_link
-            event_body["description"] = f"Join Video Interview Here: {jitsi_link}\n\n" + event_body["description"]
-            
+        # Fallback to Jitsi if Google Calendar fails or is not configured
+        import re
+        
+        # Create a clean, URL-safe meeting ID
+        safe_name = re.sub(r'[^a-zA-Z0-9]', '', payload.candidate_name)
+        jitsi_link = f"https://meet.jit.si/HRMS-Interview-{safe_name}-{str(uuid.uuid4())[:8]}"
+        meet_link = jitsi_link
+        
+        # Try to still add Jitsi to calendar if we actually have service but Meet failed
+        if 'service' in locals():
             try:
-                # Second attempt: Insert event without native Meet generation and without attendees
+                event_body.pop("conferenceData", None)
+                event_body.pop("attendees", None)
+                event_body["location"] = jitsi_link
+                event_body["description"] = f"Join Video Interview Here: {jitsi_link}\n\n" + event_body["description"]
+                
                 created = (
                     service.events()
-                    .insert(
-                        calendarId=calendar_id,
-                        body=event_body,
-                        # Removed sendUpdates="all" because we removed attendees
-                    )
+                    .insert(calendarId=calendar_id, body=event_body)
                     .execute()
                 )
-                meet_link = jitsi_link
-            except Exception as fallback_exc:
-                raise HTTPException(
-                    status_code=status.HTTP_502_BAD_GATEWAY,
-                    detail=f"Google Calendar API fallback error: {str(fallback_exc)[:200]}",
-                )
-        else:
-            # It's a different error, raise it
-            raise HTTPException(
-                status_code=status.HTTP_502_BAD_GATEWAY,
-                detail=f"Google Calendar API error: {err_msg[:200]}",
-            )
+            except Exception:
+                pass  # Ignore calendar error, just return Jitsi link
 
     if not meet_link:
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
-            detail="Failed to generate a meeting link for the calendar event.",
+            detail="Failed to generate a meeting link.",
         )
 
     return {
