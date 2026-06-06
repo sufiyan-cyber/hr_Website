@@ -5,6 +5,10 @@
   "framework": "vite",
   "rewrites": [
     {
+      "source": "/api/v1/:path*",
+      "destination": "http://hrms-backend-prod.eba-wh4pyhkx.ap-south-2.elasticbeanstalk.com/api/v1/:path*"
+    },
+    {
       "source": "/(.*)",
       "destination": "/index.html"
     }
